@@ -17,6 +17,19 @@ DROP TABLE IF EXISTS routers CASCADE;
 DROP TABLE IF EXISTS packages CASCADE;
 DROP TABLE IF EXISTS bandwidth_logs CASCADE;
 DROP TABLE IF EXISTS policies CASCADE;
+DROP TABLE IF EXISTS admins CASCADE;
+
+-- ============================================================================
+-- 0. ADMINS TABLE (Administrative accounts)
+-- ============================================================================
+CREATE TABLE admins (
+    id VARCHAR(50) PRIMARY KEY,
+    username VARCHAR(80) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255),
+    name VARCHAR(120) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
 -- ============================================================================
 -- 1. PACKAGES TABLE (Bandwidth Packages)

@@ -12,32 +12,81 @@ A modern ISP Billing and AAA Gateway application.
 
 ## Server Deployment Instructions
 
-### Prerequisites
-- Node.js (v18 or higher recommended)
-- PostgreSQL Database
-- PM2 (for production process management)
+The project provides an automated, interactive terminal wizard `setup.sh` that checks dependencies, installs modules, guides security configuration, handles credentials, and compiles production bundles completely.
 
-### 1. Installation
+### 🌐 Automated Setup (Recommended)
 
-Clone/extract the project to your deployment server, then install dependencies:
+1. Connect to your production terminal, navigate to the project directory, and run the automated wizard:
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
+2. The interactive script will automatically execute all steps needed to boot the platform.
+
+---
+
+### 🛡️ Core Security Design: Restricted Database Isolation Account (Least-Privilege)
+
+For production deployment, running the web service with administrative accounts (such as `postgres`) exposes your central routers, database rows, and operational billing records to critical security vulnerabilities. 
+
+We highly recommend using a dedicated, unprivileged sandbox database user (e.g. `nexus_app`) configured with read/write CRUD privileges limited only to the tables defined inside the system schema.
+
+#### 1. Initialize PostgreSQL Schema & Seed Data
+Log in to your PostgreSQL instance as administrative owner (`postgres`) and import the database dump file to create the tables:
+```bash
+# Connect and import seed schema inside your target database
+psql -U postgres -d nexus_db < database_dump.sql
+```
+
+#### 2. Configure Restricted Authorization User
+Execute the following commands in PGAdmin or psql CLI tool to restrict the web app's authorization boundaries:
+```sql
+-- Create an unprivileged sandbox user account for the application
+CREATE USER nexus_app WITH PASSWORD 'your_secure_app_password';
+
+-- Connect to your application database instance
+\c nexus_db
+
+-- Allow the app user connection and table scope usage
+GRANT CONNECT ON DATABASE nexus_db TO nexus_app;
+GRANT USAGE ON SCHEMA public TO nexus_app;
+
+-- Grant limited CRUD command parameters for application tables (keeps structural schema locked)
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO nexus_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO nexus_app;
+
+-- Ensure subsequent tables/seeds are safely authorized to the user boundaries
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO nexus_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO nexus_app;
+```
+
+#### 3. Setup Connection Secrets
+Use this restricted user in your production `.env` file instead of `postgres` to isolate database vulnerability paths completely:
+- Fill in: `PGUSER="nexus_app"`, `PGPASSWORD="your_secure_app_password"`, `PGDATABASE="nexus_db"`.
+
+---
+
+### 🛠️ Manual Alternative Setup (Step-by-Step)
+
+If you prefer to run setup scripts manually step-by-step:
+
+#### 1. Installation
+
+Install Node.js packages:
 ```bash
 npm install
 ```
 
-### 2. Environment Configuration
+#### 2. Environment Configuration
 
-Copy the example environment file and configure it:
+Copy the sample profile and fill in parameters:
 ```bash
 cp .env.example .env
 ```
-Edit the `.env` file with your actual database and server details:
-- **Database variables**: `PGUSER`, `PGHOST`, `PGPASSWORD`, `PGDATABASE`, `PGPORT`
-- *Note: Leave `PGSSL="false"` if connecting to a local unencrypted database or change to `"true"` if using cloud hosting like Neon/Supabase.*
-- **Stripe Variables** are optional, used if SaaS online payment is enabled later.
 
-### 3. Build the Application
+#### 3. Build the Application
 
-Build the application bundle for production (creates a single Node.js script bundling the Express server and Vite frontend):
+Build the full-stack bundle (creates single `dist/server.cjs` containing Express backend and Vite frontend static routes):
 ```bash
 npm run build
 ```
