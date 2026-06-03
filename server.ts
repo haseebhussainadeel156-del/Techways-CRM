@@ -9,6 +9,9 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Trust the first proxy (e.g. Cloud Run, Nginx) so that rate limiters can correctly read X-Forwarded-For
+  app.set('trust proxy', 1);
+
   // Modern Network Protection via Helmet (SaaS standards)
   app.use(helmet({
     contentSecurityPolicy: false, // disabled for vite HMR in dev
