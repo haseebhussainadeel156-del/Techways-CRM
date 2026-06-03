@@ -26,6 +26,7 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
   const [editForm] = Form.useForm();
   const [editingCustomer, setEditingCustomer] = useState<CustomerSubscriber | null>(null);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState('All');
 
   const myReseller = resellers.find(r => r.id === currentLevelId);
   const filteredPackages = (currentRole === UserRole.ADMIN || !myReseller)
@@ -164,11 +165,13 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
     }
   };
 
-  const filteredClients = customers.filter(c =>
-    c.fullName.toLowerCase().includes(search.toLowerCase()) ||
-    c.username.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone.includes(search)
-  );
+  const filteredClients = customers.filter(c => {
+    const matchesSearch = c.fullName.toLowerCase().includes(search.toLowerCase()) ||
+      c.username.toLowerCase().includes(search.toLowerCase()) ||
+      c.phone.includes(search);
+    const matchesStatus = statusFilter === 'All' || c.status === statusFilter.toLowerCase();
+    return matchesSearch && matchesStatus;
+  });
 
   // Columns for the ant table
   const columns = [
@@ -308,6 +311,16 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
         className="shadow-sm border-gray-200"
         extra={
           <Space>
+            <Select
+              value={statusFilter}
+              onChange={setStatusFilter}
+              style={{ width: 120 }}
+            >
+              <Option value="All">All Statuses</Option>
+              <Option value="Active">Active</Option>
+              <Option value="Suspended">Suspended</Option>
+              <Option value="Expired">Expired</Option>
+            </Select>
             <Input
               prefix={<SearchOutlined className="text-gray-400" />}
               placeholder="Search user, IP..."
