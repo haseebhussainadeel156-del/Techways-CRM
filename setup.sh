@@ -33,36 +33,41 @@ echo ""
 # 1. PREREQUISITES AND ENVIRONMENT AUDIT
 echo -e "${BLUE}${BOLD}[Step 1/5] Executing environment dependencies audit...${NC}"
 
+# Update package list
+apt-get update
+
 # Check Node.js
 if ! command -v node &> /dev/null; then
-    echo -e "${RED}${BOLD}Error: Node.js is not installed.${NC} Please install Node.js (v18+) and try again."
-    exit 1
+    echo -e "${YELLOW}Node.js not found. Installing Node.js (v18+)...${NC}"
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+    apt-get install -y nodejs
+    echo -e "  - Node.js Installed: ${GREEN}$(node -v)${NC}"
 else
-    NODE_VER=$(node -v)
-    echo -e "  - Node.js Detected: ${GREEN}${NODE_VER}${NC} (Required: >= v18)"
+    echo -e "  - Node.js Detected: ${GREEN}$(node -v)${NC}"
 fi
 
-# Check Npm
+# Check Npm (usually comes with nodejs, but safety check)
 if ! command -v npm &> /dev/null; then
-    echo -e "${RED}${BOLD}Error: npm package manager is not installed.${NC} Please install npm and run script again."
-    exit 1
-else
-    NPM_VER=$(npm -v)
-    echo -e "  - NPM Detected: ${GREEN}v${NPM_VER}${NC}"
+    echo -e "${YELLOW}Npm not found. Installing...${NC}"
+    apt-get install -y npm
 fi
 
 # Check Git
-if command -v git &> /dev/null; then
-    echo -e "  - Git Source Control: ${GREEN}Active${NC}"
+if ! command -v git &> /dev/null; then
+    echo -e "${YELLOW}Git not found. Installing...${NC}"
+    apt-get install -y git
+    echo -e "  - Git Installed: ${GREEN}Active${NC}"
 else
-    echo -e "  - Git Source Control: ${YELLOW}Not Detected (Non-blocking)${NC}"
+    echo -e "  - Git Source Control: ${GREEN}Active${NC}"
 fi
 
-# Check Postgres local command presence (CLI tool confirmation)
-if command -v psql &> /dev/null; then
-    echo -e "  - PostgreSQL Client: ${GREEN}Available${NC}"
+# Check Postgres client
+if ! command -v psql &> /dev/null; then
+    echo -e "${YELLOW}PostgreSQL client not found. Installing...${NC}"
+    apt-get install -y postgresql-client
+    echo -e "  - PostgreSQL Client: ${GREEN}Installed${NC}"
 else
-    echo -e "  - PostgreSQL Client: ${YELLOW}Not Installed Locally (Connection still works externally)${NC}"
+    echo -e "  - PostgreSQL Client: ${GREEN}Available${NC}"
 fi
 echo ""
 
@@ -170,8 +175,16 @@ else
 fi
 echo ""
 
-# 5. PRODUCTION BUNDLING AND COMPILATION check
-echo -e "${BLUE}${BOLD}[Step 5/5] Compiling and Bundling Nexus Portal...${NC}"
+# 5. ADMIN USER INITIALIZATION
+echo -e "${BLUE}${BOLD}[Step 5/6] Initial Admin Setup${NC}"
+read -p "Would you like to create an admin user now? (y/n): " create_admin
+if [[ "$create_admin" =~ ^[Yy]$ ]]; then
+    npx tsx create_admin.ts
+fi
+echo ""
+
+# 6. PRODUCTION BUNDLING AND COMPILATION check
+echo -e "${BLUE}${BOLD}[Step 6/6] Compiling and Bundling Nexus Portal...${NC}"
 echo -e "Building full-stack modules via Vite and esbuild server bundlers..."
 npm run build
 echo ""

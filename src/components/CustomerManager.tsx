@@ -396,20 +396,24 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
               </Row>
               <Row gutter={16}>
                 <Col xs={24} md={8}>
-                  <Form.Item name="nasId" label="NAS / Server" rules={[{ required: true, message: 'Required!' }]}>
-                    <Select placeholder="Select NAS">
-                      <Option value="nas_1">MikroTik Rack-1</Option>
-                      <Option value="nas_2">MikroTik Rack-2</Option>
-                    </Select>
-                  </Form.Item>
-                </Col>
-                <Col xs={24} md={8}>
-                  <Form.Item name="cnic" label="National ID (CNIC)" rules={[{ required: true, message: 'Required!' }]}>
+                  <Form.Item 
+                    name="cnic" 
+                    label="National ID (CNIC)" 
+                    rules={[
+                      { required: true, message: 'Required!' },
+                      { pattern: /^\d{5}-\d{7}-\d{1}$/, message: 'Invalid CNIC format (00000-0000000-0)' }
+                    ]}
+                  >
                     <Input placeholder="00000-0000000-0" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={8}>
-                  <Form.Item name="mobile" label="Mobile" rules={[{ required: true, message: 'Required!' }]}>
+                  <Form.Item name="location" label="Physical Location" rules={[{ required: true, message: 'Required!' }]}>
+                    <Input placeholder="e.g. Near Main Market" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={8}>
+                  <Form.Item name="phone" label="Phone" rules={[{ required: true, message: 'Required!' }]}>
                     <Input placeholder="+92XXXXXXXXXX" />
                   </Form.Item>
                 </Col>
@@ -421,7 +425,7 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={8}>
-                  <Form.Item name="address" label="Address" rules={[{ required: true, message: 'Required!' }]}>
+                  <Form.Item name="address" label="Detailed Address" rules={[{ required: true, message: 'Required!' }]}>
                     <Input placeholder="Plot 45, District" />
                   </Form.Item>
                 </Col>
@@ -553,12 +557,18 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="cnic" label="CNIC (National ID)">
+              <Form.Item 
+                name="cnic" 
+                label="CNIC (National ID)" 
+                rules={[
+                  { pattern: /^\d{5}-\d{7}-\d{1}$/, message: 'Invalid CNIC format (00000-0000000-0)' }
+                ]}
+              >
                 <Input />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="mobile" label="Mobile">
+              <Form.Item name="location" label="Physical Location">
                 <Input />
               </Form.Item>
             </Col>
@@ -566,7 +576,7 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
 
           <Row gutter={16}>
             <Col xs={24} md={8}>
-              <Form.Item name="address" label="Address">
+              <Form.Item name="address" label="Detailed Address">
                 <Input />
               </Form.Item>
             </Col>

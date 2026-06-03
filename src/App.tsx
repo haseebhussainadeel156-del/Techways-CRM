@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { UserRole, AccountStatus, BandwidthPackage, BandwidthDataPoint, HrmStaff, RouterOS, ResellerNode } from './types';
 import RoleSelector from './components/RoleSelector';
 import AnalyticsPanel from './components/AnalyticsPanel';
+import FinancialChart from './components/FinancialChart';
 import CustomerManager from './components/CustomerManager';
 import HrmManager from './components/HrmManager';
 import TicketDesk from './components/TicketDesk';
@@ -16,6 +17,7 @@ import SubDealerManager from './components/SubDealerManager';
 import ReportsManager from './components/ReportsManager';
 import PermissionsManager from './components/PermissionsManager';
 import ProfileManager from './components/ProfileManager';
+import GlobalSearchBar from './components/GlobalSearchBar';
 import ResellerWallet from './components/ResellerWallet';
 
 import { Card as AntCard, Row as AntRow, Col as AntCol, Space as AntSpace, Button as AntButton, Progress as AntProgress, Badge as AntBadge, Statistic as AntStatistic, Typography as AntTypography, Divider as AntDivider, Alert as AntAlert, message as antMessage, Layout, Menu, Drawer, Spin, ConfigProvider, theme } from 'antd';
@@ -96,7 +98,54 @@ const darkThemeConfig = {
   }
 };
 
+const lightThemeConfig = {
+  algorithm: theme.defaultAlgorithm,
+  token: {
+    colorPrimary: '#4f46e5', // Indigo-600
+    colorBgBase: '#ffffff',  // White/Slate-50
+    colorBgContainer: '#f1f5f9', // Slate-100
+    colorBorder: '#cbd5e1', // Slate-300
+    colorTextBase: '#0f172a', // Slate-900
+    borderRadius: 12,
+  },
+  components: {
+    Card: {
+      colorBgContainer: '#f1f5f9',
+      colorBorderSecondary: '#e2e8f0',
+    },
+    Table: {
+      colorBgContainer: '#f1f5f9',
+      colorHeaderBg: '#e2e8f0',
+      colorRowHover: '#cbd5e1',
+    },
+    Input: {
+      colorBgContainer: '#ffffff',
+      colorActiveBorder: '#4f46e5',
+    },
+    Select: {
+      colorBgContainer: '#ffffff',
+    },
+    Modal: {
+      colorBgElevated: '#ffffff',
+    },
+    Drawer: {
+      colorBgElevated: '#ffffff',
+    }
+  }
+};
+
 export default function App() {
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem("nexus_theme") as 'dark' | 'light') || 'dark';
+  });
+
+  const toggleTheme = () => {
+    const newTheme = themeMode === 'dark' ? 'light' : 'dark';
+    setThemeMode(newTheme);
+    localStorage.setItem("nexus_theme", newTheme);
+  };
+  
+  const currentThemeConfig = themeMode === 'dark' ? darkThemeConfig : lightThemeConfig;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   // Authentication & session state
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
@@ -130,6 +179,9 @@ export default function App() {
   const activeTab = rawPath === "" ? (currentRole === UserRole.CUSTOMER ? "portal" : "dashboard") : rawPath;
 
   const setActiveTab = (tabId: string) => {
+    if (tabId === 'telemetry') {
+      setNotifications([]);
+    }
     navigate(`/${tabId}`);
   };
 
@@ -414,7 +466,7 @@ export default function App() {
 
   if (!isLoggedIn) {
     return (
-      <ConfigProvider theme={darkThemeConfig}>
+      <ConfigProvider theme={currentThemeConfig}>
         <LoginPage
           onLoginSuccess={(user) => {
             localStorage.setItem("nexus_logged_in", "true");
@@ -437,7 +489,7 @@ export default function App() {
   }
 
   return (
-    <ConfigProvider theme={darkThemeConfig}>
+    <ConfigProvider theme={currentThemeConfig}>
       <Layout className="min-h-screen bg-slate-950 font-sans text-slate-100 antialiased flex flex-col relative overflow-hidden" style={{ minHeight: '100vh', background: '#020617' }}>
       {/* Dynamic top bar header */}
       <Layout.Header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur px-6 flex items-center justify-between h-16 relative z-20 shrink-0 mb-0 select-none" style={{ position: 'relative', top: 0, width: '100%', display: 'flex', zIndex: 1000, height: '64px', minHeight: '64px', background: '#090d1a', padding: '0 24px' }}>
@@ -470,6 +522,19 @@ export default function App() {
 
         {/* Dynamic consolidated premium user menu controls */}
         <div className="flex items-center gap-3 select-none">
+          <GlobalSearchBar onSelect={(customer) => {
+            setActiveTab("subscribers");
+            // Optionally try to trigger search inside CustomerManager if possible, 
+            // but for now, just navigating to the tab is fine.
+          }} />
+
+          {/* Notification Badge */}
+          <AntBadge count={notifications.length} offset={[-2, 2]} className="cursor-pointer">
+            <div className="bg-slate-900/60 border border-slate-800/80 p-2.5 rounded-xl backdrop-blur text-slate-400">
+              <Activity className="w-5 h-5" />
+            </div>
+          </AntBadge>
+
           {/* User profile capsule */}
           <div className="flex items-center gap-2.5 bg-slate-900/60 border border-slate-800/80 px-3 py-1.5 rounded-xl backdrop-blur">
             <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-extrabold text-xs select-none">
@@ -671,6 +736,11 @@ export default function App() {
                   )}
                 </AntRow>
               )}
+
+              {/* Financial Insights */}
+              <div className="w-full">
+                <FinancialChart role={currentRole} />
+              </div>
 
               {/* Grid of central panels for Quick-Monitoring */}
               <AntRow gutter={[24, 24]}>
@@ -1081,6 +1151,8 @@ export default function App() {
               viewerId={currentId}
               viewerRole={currentRole}
               loggedInName={loggedInName}
+              themeMode={themeMode}
+              toggleTheme={toggleTheme}
             />
           )}
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Shield, Briefcase, Zap, Star, Layout, Activity, Clock, Mail, Phone, MapPin, Compass, Key, Tag, FileText, Globe, AlertCircle, Edit, Trash2, CheckCircle2, DollarSign, Users } from 'lucide-react';
 import { UserRole, CustomerSubscriber, BandwidthPackage, ResellerNode, Invoice, HrmStaff } from '../types';
-import { Spin, message, Row, Col, Space, Button, Popconfirm, Modal, Form, Input, Select } from 'antd';
+import { Spin, message, Row, Col, Space, Button, Popconfirm, Modal, Form, Input, Select, Switch } from 'antd';
 
 const { Option } = Select;
 
@@ -11,9 +11,11 @@ interface ProfileManagerProps {
   viewerId: string;
   viewerRole: string;
   loggedInName: string;
+  themeMode: 'dark' | 'light';
+  toggleTheme: () => void;
 }
 
-export default function ProfileManager({ profileId, profileRole, viewerId, viewerRole, loggedInName }: ProfileManagerProps) {
+export default function ProfileManager({ profileId, profileRole, viewerId, viewerRole, loggedInName, themeMode, toggleTheme }: ProfileManagerProps) {
   const [loading, setLoading] = useState<boolean>(false);
   const [customerData, setCustomerData] = useState<CustomerSubscriber | null>(null);
   const [resellerData, setResellerData] = useState<ResellerNode | null>(null);
@@ -22,6 +24,7 @@ export default function ProfileManager({ profileId, profileRole, viewerId, viewe
   const [customerInvoices, setCustomerInvoices] = useState<Invoice[]>([]);
   const [resellers, setResellers] = useState<any[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [editForm] = Form.useForm();
 
   const reloadProfile = async () => {
@@ -53,6 +56,13 @@ export default function ProfileManager({ profileId, profileRole, viewerId, viewe
         const resellersData = await resRes.json();
         setResellers(resellersData);
       }
+      
+      // Mock logs
+      setActivityLogs([
+          { id: 'log-1', datetime: new Date().toISOString(), activity: 'Profile photo updated', adminId: 'admin' },
+          { id: 'log-2', datetime: new Date(Date.now() - 86400000).toISOString(), activity: 'Package upgraded to 20Mbps', adminId: 'admin' },
+          { id: 'log-3', datetime: new Date(Date.now() - 172800000).toISOString(), activity: 'Address information changed', adminId: 'admin' },
+      ]);
     } catch (e: any) {
       message.error("Failed to load subscriber profile details: " + e.message);
     } finally {
@@ -255,9 +265,12 @@ export default function ProfileManager({ profileId, profileRole, viewerId, viewe
           <div className="absolute -top-32 -right-32 w-100 h-100 bg-sky-505 bg-sky-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
           <div className="flex-shrink-0 flex flex-col items-center gap-4 relative z-10">
-            <div className="w-32 h-32 bg-slate-950/80 rounded-full flex items-center justify-center border border-slate-700 shadow-2xl relative overflow-hidden">
+            <div className="w-32 h-32 bg-slate-950/80 rounded-full flex items-center justify-center border border-slate-700 shadow-2xl relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-tr from-slate-800/40 to-transparent"></div>
               <User className="w-16 h-16 text-indigo-400 drop-shadow-md" />
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
+                <span className="text-white text-[10px] font-bold uppercase">Change</span>
+              </div>
             </div>
             <span className="text-[10px] font-mono bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full border border-indigo-500/20 tracking-wider font-bold">
               SUBSCRIBER CONNECTION
@@ -457,31 +470,33 @@ export default function ProfileManager({ profileId, profileRole, viewerId, viewe
 
               {/* Demographic Profile Actions */}
               <div className="space-y-3.5">
-                <button
-                  onClick={() => {
-                    setIsEditModalOpen(true);
-                    editForm.setFieldsValue({
-                      username: customerData.username,
-                      fullName: customerData.fullName,
-                      email: customerData.email,
-                      phone: customerData.phone,
-                      packageId: customerData.packageId,
-                      connectionType: (customerData as any).connectionType || 'ftth',
-                      salesperson: (customerData as any).salesperson || 'agent_1',
-                      cnic: (customerData as any).cnic || '',
-                      mobile: (customerData as any).mobile || customerData.phone || '',
-                      address: customerData.address,
-                      city: (customerData as any).city || 'city_1',
-                      macAddress: customerData.macAddress,
-                      latitude: (customerData as any).latitude || '',
-                      longitude: (customerData as any).longitude || '',
-                    });
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-800 border border-slate-700 hover:bg-slate-700/80 hover:border-slate-600 rounded-xl text-xs font-semibold text-slate-100 transition-all cursor-pointer"
-                >
-                  <Edit className="w-4 h-4 text-indigo-400" />
-                  <span>Inspect Profile Details</span>
-                </button>
+                { (viewerRole === UserRole.ADMIN || viewerRole === UserRole.HRM_STAFF || viewerId === customerData.id) && (
+                  <button
+                    onClick={() => {
+                      setIsEditModalOpen(true);
+                      editForm.setFieldsValue({
+                        username: customerData.username,
+                        fullName: customerData.fullName,
+                        email: customerData.email,
+                        phone: (customerData as any).phone || (customerData as any).mobile || '',
+                        packageId: customerData.packageId,
+                        connectionType: (customerData as any).connectionType || 'ftth',
+                        salesperson: (customerData as any).salesperson || 'agent_1',
+                        cnic: (customerData as any).cnic || '',
+                        location: (customerData as any).location || '',
+                        address: customerData.address,
+                        city: (customerData as any).city || 'city_1',
+                        macAddress: customerData.macAddress,
+                        latitude: (customerData as any).latitude || '',
+                        longitude: (customerData as any).longitude || '',
+                      });
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-800 border border-slate-700 hover:bg-slate-700/80 hover:border-slate-600 rounded-xl text-xs font-semibold text-slate-100 transition-all cursor-pointer"
+                  >
+                    <Edit className="w-4 h-4 text-indigo-400" />
+                    <span>Inspect Profile Details</span>
+                  </button>
+                )}
 
                 <Popconfirm
                   title="Confirm Permanent Deletion of Subscriber Account?"
@@ -496,6 +511,42 @@ export default function ProfileManager({ profileId, profileRole, viewerId, viewe
                     <span>Delete Subscriber Profile</span>
                   </button>
                 </Popconfirm>
+              </div>
+            </div>
+
+            {/* Display & UI Settings */}
+            <div className="bg-slate-900/65 border border-slate-800 p-6 rounded-2xl relative overflow-hidden backdrop-blur space-y-4">
+              <div className="flex items-center space-x-2 text-indigo-400">
+                <Layout className="w-4 h-4" />
+                <span className="text-xs uppercase font-extrabold text-slate-200 font-mono tracking-wider">Interface Settings</span>
+              </div>
+              <div className="flex items-center justify-between bg-slate-950/40 p-3 rounded-lg border border-slate-850">
+                <span className="text-xs text-slate-300 font-semibold">High Contrast Light Mode</span>
+                <Switch
+                  checked={themeMode === 'light'}
+                  onChange={toggleTheme}
+                  className={themeMode === 'light' ? 'bg-indigo-600' : 'bg-slate-700'}
+                />
+              </div>
+            </div>
+
+            {/* Activity Logs Panel */}
+            <div className="bg-slate-900/65 border border-slate-800 p-6 rounded-2xl relative overflow-hidden backdrop-blur space-y-4">
+              <div className="flex items-center space-x-2 text-rose-400">
+                <Activity className="w-4 h-4" />
+                <span className="text-xs uppercase font-extrabold text-slate-200 font-mono tracking-wider">Audit & Activity Logs</span>
+              </div>
+              
+              <div className="space-y-3">
+                {activityLogs.map((log) => (
+                  <div key={log.id} className="bg-slate-950/40 p-3 rounded-lg border border-slate-850 flex items-start gap-3">
+                    <Clock className="w-3.5 h-3.5 text-slate-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-slate-200">{log.activity}</p>
+                      <p className="text-[10px] text-slate-500 font-mono">{new Date(log.datetime).toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -590,21 +641,30 @@ export default function ProfileManager({ profileId, profileRole, viewerId, viewe
                 </Form.Item>
               </Col>
               <Col xs={24} md={8}>
-                <Form.Item name="cnic" label="CNIC (National ID)">
-                  <Input className="bg-slate-900 border-slate-700 text-slate-200" />
+                <Form.Item 
+                  name="cnic" 
+                  label="CNIC (National ID)"
+                  rules={[{ pattern: /^\d{5}-\d{7}-\d{1}$/, message: 'Invalid CNIC format (00000-0000000-0)' }]}
+                >
+                  <Input placeholder="00000-0000000-0" className="bg-slate-900 border-slate-700 text-slate-200" />
                 </Form.Item>
               </Col>
               <Col xs={24} md={8}>
-                <Form.Item name="mobile" label="Mobile">
-                  <Input className="bg-slate-900 border-slate-700 text-slate-200" />
+                <Form.Item name="location" label="Physical Location">
+                  <Input placeholder="e.g. Near Main Market" className="bg-slate-900 border-slate-700 text-slate-200" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="phone" label="Phone">
+                  <Input placeholder="+92XXXXXXXXXX" className="bg-slate-900 border-slate-700 text-slate-200" />
                 </Form.Item>
               </Col>
             </Row>
 
             <Row gutter={16}>
               <Col xs={24} md={8}>
-                <Form.Item name="address" label="Address">
-                  <Input className="bg-slate-900 border-slate-700 text-slate-200" />
+                <Form.Item name="address" label="Detailed Address">
+                  <Input placeholder="Plot 45, District" className="bg-slate-900 border-slate-700 text-slate-200" />
                 </Form.Item>
               </Col>
               <Col xs={24} md={8}>
@@ -659,9 +719,12 @@ export default function ProfileManager({ profileId, profileRole, viewerId, viewe
           <div className="absolute -top-32 -right-32 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
           <div className="flex-shrink-0 flex flex-col items-center gap-4 relative z-10">
-            <div className="w-32 h-32 bg-slate-950/80 rounded-full flex items-center justify-center border border-slate-700 shadow-2xl relative overflow-hidden">
+            <div className="w-32 h-32 bg-slate-950/80 rounded-full flex items-center justify-center border border-slate-700 shadow-2xl relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-tr from-slate-800/40 to-transparent"></div>
               {getRoleIcon()}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
+                <span className="text-white text-[10px] font-bold uppercase">Change</span>
+              </div>
             </div>
             <span className="text-[10px] font-mono bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full border border-indigo-500/20 tracking-widest font-bold">
               {getRoleName()}
@@ -861,13 +924,16 @@ export default function ProfileManager({ profileId, profileRole, viewerId, viewe
           <div className="absolute -top-32 -right-32 w-100 h-100 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
           <div className="flex-shrink-0 flex flex-col items-center gap-4 relative z-10">
-            <div className="w-32 h-32 bg-slate-950/80 rounded-full flex items-center justify-center border border-slate-700 shadow-2xl relative overflow-hidden">
+            <div className="w-32 h-32 bg-slate-950/80 rounded-full flex items-center justify-center border border-slate-700 shadow-2xl relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-tr from-slate-800/40 to-transparent"></div>
               {isSubAdmin ? (
                 <Shield className="w-16 h-16 text-rose-400 drop-shadow-md" />
               ) : (
                 <Briefcase className="w-16 h-16 text-emerald-400 drop-shadow-md" />
               )}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
+                <span className="text-white text-[10px] font-bold uppercase">Change</span>
+              </div>
             </div>
             <span className={`text-[10px] font-mono px-3 py-1 rounded-full border tracking-widest font-bold uppercase ${
               isSubAdmin ? "bg-rose-500/10 text-rose-400 border-rose-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"

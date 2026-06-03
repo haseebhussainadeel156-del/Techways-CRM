@@ -880,7 +880,7 @@ router.get('/customers', async (req, res) => {
 });
 
 router.post('/customers', async (req, res) => {
-  const { username, fullName, email, phone, password, packageId, parentResellerId, parentRole, address, macAddress, cnic, mobile, salesperson, nasId, city, latitude, longitude, customPrice } = req.body;
+  const { username, fullName, email, phone, password, packageId, parentResellerId, parentRole, address, macAddress, cnic, mobile, salesperson, nasId, city, latitude, longitude, customPrice, location, joiningDate } = req.body;
 
   if (!username || !fullName || !packageId || !parentResellerId) {
     return res.status(400).json({ error: "Missing required profile fields (username, fullname, package, parent reseller)." });
@@ -926,6 +926,8 @@ router.post('/customers', async (req, res) => {
     city: city || "",
     latitude: latitude || "",
     longitude: longitude || "",
+    location: location || "",
+    joiningDate: joiningDate || new Date().toISOString().split('T')[0],
     customPrice: customPrice !== undefined ? Number(customPrice) : undefined
   };
 
@@ -1000,7 +1002,7 @@ router.post('/customers/status', async (req, res) => {
 
 router.put('/customers/:id', async (req, res) => {
   const { id } = req.params;
-  const { username, fullName, email, phone, packageId, parentResellerId, address, macAddress, cnic, mobile, salesperson, nasId, city, latitude, longitude, customPrice } = req.body;
+  const { username, fullName, email, phone, packageId, parentResellerId, address, macAddress, cnic, mobile, salesperson, nasId, city, latitude, longitude, customPrice, location } = req.body;
 
   try {
     let updatedCustomer: any = null;
@@ -1028,6 +1030,7 @@ router.put('/customers/:id', async (req, res) => {
         city: city !== undefined ? city : (curr as any).city,
         latitude: latitude !== undefined ? latitude : (curr as any).latitude,
         longitude: longitude !== undefined ? longitude : (curr as any).longitude,
+        location: location !== undefined ? location : (curr as any).location,
         customPrice: customPrice !== undefined ? (customPrice === null ? undefined : Number(customPrice)) : curr.customPrice
       };
 

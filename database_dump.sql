@@ -28,6 +28,11 @@ CREATE TABLE admins (
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255),
     name VARCHAR(120) NOT NULL,
+    cnic VARCHAR(20),
+    phone VARCHAR(30),
+    location VARCHAR(150),
+    address TEXT,
+    joining_date DATE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -124,6 +129,9 @@ CREATE TABLE customers (
     status VARCHAR(20) NOT NULL CHECK (status IN ('active', 'suspended', 'expired')),
     expiry_date TIMESTAMP WITH TIME ZONE,
     address TEXT,
+    location VARCHAR(150),
+    cnic VARCHAR(20),
+    joining_date DATE,
     ip_address VARCHAR(45),
     mac_address VARCHAR(30),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
