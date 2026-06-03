@@ -1,0 +1,6 @@
+{
+  "name": "Nexus ISP Manager",
+  "description": "Complete replacement for Nexus with reseller billing hierarchy, real-time bandwidth analytics, seamless user management, and multi-level HRM features for Admin, Franchise, Dealer, and Sub-dealers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
