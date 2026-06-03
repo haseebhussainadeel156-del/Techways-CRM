@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Shield, Briefcase, Zap, Star, Layout, Activity, Clock, Mail, Phone, MapPin, Compass, Key, Tag, FileText, Globe, AlertCircle, Edit, Trash2, CheckCircle2, DollarSign, Users } from 'lucide-react';
 import { UserRole, CustomerSubscriber, BandwidthPackage, ResellerNode, Invoice, HrmStaff } from '../types';
 import { Spin, message, Row, Col, Space, Button, Popconfirm, Modal, Form, Input, Select, Switch } from 'antd';
+import BandwidthGraph from './BandwidthGraph';
 
 const { Option } = Select;
 
@@ -332,6 +333,11 @@ export default function ProfileManager({ profileId, profileRole, viewerId, viewe
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             
+            {/* Bandwidth Usage Graph */}
+            <div className="w-full mb-6">
+              <BandwidthGraph />
+            </div>
+
             {/* General Profile Specs */}
             <div className="bg-slate-900/65 border border-slate-800 p-6 rounded-2xl relative overflow-hidden backdrop-blur space-y-4">
               <div className="border-b border-slate-800 pb-2 flex items-center gap-2">
