@@ -18,7 +18,8 @@ import {
   CashflowCategory,
   CashflowEntry,
   RadiusSession,
-  IspPolicy
+  IspPolicy,
+  AdminUser
 } from '../src/types';
 
 const { Pool } = pg;
@@ -28,6 +29,7 @@ const STORAGE_FILE = path.join(process.cwd(), 'server_data_storage.json');
 
 // Interface for database schema
 export interface DatabaseSchema {
+  admins: AdminUser[];
   packages: BandwidthPackage[];
   routers: RouterOS[];
   resellers: ResellerNode[];
@@ -48,6 +50,7 @@ export interface DatabaseSchema {
 
 // Initial Mock Data
 const INITIAL_DB: DatabaseSchema = {
+  admins: [],
   packages: [
     { 
       id: "pkg-1", 
@@ -625,6 +628,7 @@ export function getPool() {
 
 // Table schema translations
 const TABLE_MAPPINGS: Record<keyof DatabaseSchema, string> = {
+  admins: 'admins',
   packages: 'packages',
   routers: 'routers',
   resellers: 'resellers',
@@ -823,6 +827,7 @@ export class FileDB {
   private async readPostgres(poolClient: any): Promise<DatabaseSchema> {
     const schema: any = {};
     try {
+      schema.admins = snakeToCamel((await poolClient.query(`SELECT * FROM admins`)).rows);
       schema.packages = snakeToCamel((await poolClient.query(`SELECT * FROM packages`)).rows);
       schema.routers = snakeToCamel((await poolClient.query(`SELECT * FROM routers`)).rows);
       schema.resellers = snakeToCamel((await poolClient.query(`SELECT * FROM resellers`)).rows);

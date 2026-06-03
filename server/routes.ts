@@ -9,6 +9,49 @@ const router = Router();
 // Helper to generate IDs
 const genId = (prefix: string) => `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
 
+// ==========================================
+// SYSTEM SETUP
+// ==========================================
+router.get('/setup/status', async (req, res) => {
+  try {
+    const db = await dbInstance.get();
+    const hasAdmins = Array.isArray(db.admins) && db.admins.length > 0;
+    res.json({ needsSetup: !hasAdmins });
+  } catch (err) {
+    res.json({ needsSetup: false });
+  }
+});
+
+router.post('/setup/admin', async (req, res) => {
+  const { username, email, name, password } = req.body;
+  if (!username || !password || !email || !name) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  const db = await dbInstance.get();
+  if (Array.isArray(db.admins) && db.admins.length > 0) {
+    return res.status(403).json({ error: "System already initialized with an admin account." });
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const newAdmin = {
+      id: "admin",
+      username,
+      email,
+      name,
+      passwordHash
+    };
+
+    await dbInstance.update('admins', () => [newAdmin]);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to setup admin account" });
+  }
+});
+
 // Helper for FreeRADIUS Syncing
 async function syncRadiusCustomer(username: string, password?: string, packageId?: string, status?: string) {
   const pgPool = getPool();
@@ -54,18 +97,18 @@ router.post('/auth/login', async (req, res) => {
   };
 
   // A. Super Admin Check
-  if (username.toLowerCase() === "admin" || username.toLowerCase() === "admin@nexus.net") {
-    // Hardcoded demo admin password check or bcrypt logic here
-    if (password && password !== 'admin') {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
+  const admin = db.admins?.find(a => a.username.toLowerCase() === username.toLowerCase() || a.email.toLowerCase() === username.toLowerCase());
+  if (admin) {
+    const isValid = await verifyPassword(password, admin.passwordHash);
+    if (!isValid) return res.status(401).json({ error: "Invalid credentials" });
+
     return res.json({
       success: true,
       user: {
-        id: "admin",
+        id: admin.id,
         role: UserRole.ADMIN,
-        name: "Super Admin",
-        email: "admin@nexus.net"
+        name: admin.name,
+        email: admin.email
       }
     });
   }

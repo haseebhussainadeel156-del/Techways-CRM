@@ -15,6 +15,14 @@ export enum UserRole {
 
 export type AccountStatus = "active" | "suspended" | "expired" | "pending";
 
+export interface AdminUser {
+  id: string;
+  username: string; // e.g. admin
+  email: string; // admin@nexus.net
+  passwordHash?: string;
+  name: string; // Super Admin
+}
+
 // ISP Packages that can be assigned to customers
 export interface BandwidthPackage {
   id: string;
