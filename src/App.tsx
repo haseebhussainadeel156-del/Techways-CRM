@@ -7,6 +7,7 @@ import FinancialChart from './components/FinancialChart';
 import CustomerManager from './components/CustomerManager';
 import HrmManager from './components/HrmManager';
 import TicketDesk from './components/TicketDesk';
+import AccountingManager from './components/AccountingManager';
 import NasManager from './components/NasManager';
 import PackageManager from './components/PackageManager';
 import PolicyManager from './components/PolicyManager';
@@ -20,7 +21,7 @@ import ProfileManager from './components/ProfileManager';
 import GlobalSearchBar from './components/GlobalSearchBar';
 import ResellerWallet from './components/ResellerWallet';
 
-import { Card as AntCard, Row as AntRow, Col as AntCol, Space as AntSpace, Button as AntButton, Progress as AntProgress, Badge as AntBadge, Statistic as AntStatistic, Typography as AntTypography, Divider as AntDivider, Alert as AntAlert, message as antMessage, Layout, Menu, Drawer, Spin, ConfigProvider, theme } from 'antd';
+import { Card as AntCard, Row as AntRow, Col as AntCol, Space as AntSpace, Button as AntButton, Progress as AntProgress, Badge as AntBadge, Statistic as AntStatistic, Typography as AntTypography, Divider as AntDivider, Alert as AntAlert, message as antMessage, Layout, Menu, Drawer, Spin, ConfigProvider, theme, Tabs as AntTabs, Table as AntTable, Tag as AntTag } from 'antd';
 import { CreditCardOutlined } from '@ant-design/icons';
 
 const { Title: AntTitle, Text: AntText } = AntTypography;
@@ -468,6 +469,7 @@ export default function App() {
     { id: "franchises", label: "Franchises", icon: Shield },
     { id: "dealers", label: "Dealers", icon: Zap },
     { id: "subdealers", label: "Sub-Dealers", icon: Briefcase },
+    { id: "accounting", label: "Accounting", icon: DollarSign },
     { id: "reporting", label: "Reports Module", icon: BarChart },
     { id: "packages", label: "Plan Catalogue", icon: Tag },
     { id: "policies", label: "ISP Rule Policies", icon: Sliders },
@@ -1054,6 +1056,11 @@ export default function App() {
             </div>
           )}
 
+          {/* TAB 11: ACCOUNTING MODULE */}
+          {activeTab === "accounting" && currentRole !== UserRole.CUSTOMER && (
+            <AccountingManager />
+          )}
+
           {/* TAB 1: TELEMETRY & TRAFFIC ANALYTICS */}
           {activeTab === "telemetry" && currentRole !== UserRole.CUSTOMER && (
             <AnalyticsPanel
@@ -1194,7 +1201,15 @@ export default function App() {
           {/* TAB 8: ACCESS CONTROL MATRIX */}
           {/* TAB 9: END SUBSCRIBER CLIENT PORTAL DASHBOARD */}
           {activeTab === "portal" && currentRole === UserRole.CUSTOMER && clientInfo && (
-            <div className="space-y-6 animate-fade-in animate-duration-300">
+            <AntTabs
+              defaultActiveKey="1"
+              className="portal-tabs"
+              items={[
+                {
+                  key: '1',
+                  label: 'Overview',
+                  children: (
+                    <div className="space-y-6 animate-fade-in animate-duration-300">
               {/* User Info banner */}
               <AntCard
                 className="bg-gradient-to-r from-slate-950 via-zinc-900 to-indigo-950/20 border border-slate-800 rounded-2xl relative overflow-hidden shadow-lg"
@@ -1329,63 +1344,7 @@ export default function App() {
                   </AntCard>
                 </AntCol>
 
-                {/* BILLS AND INVOICES FOR CLIENT USING ANTD CARD & LIST */}
-                <AntCol xs={24} md={12}>
-                  <AntCard
-                    title={
-                      <AntSpace size="small" className="text-zinc-100">
-                        <DollarSign className="w-5 h-5 text-emerald-400" />
-                        <div>
-                          <h3 className="text-sm font-semibold m-0 text-slate-100">Personal Statements & Bills</h3>
-                          <p className="text-[11px] text-zinc-500 m-0">Pay bills directly online using dynamic prepaid balances.</p>
-                        </div>
-                      </AntSpace>
-                    }
-                    className="bg-zinc-950 border border-zinc-800 rounded-2xl shadow-lg h-full flex flex-col justify-between"
-                    styles={{ body: { display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', flex: 1, padding: '24px' } }}
-                  >
-                    <div className="space-y-3 w-full max-h-[220px] overflow-y-auto pr-1">
-                      {clientBill.length === 0 ? (
-                        <div className="text-center py-8 text-xs text-zinc-650 font-mono">
-                          No statements on file.
-                        </div>
-                      ) : (
-                        clientBill.map((inv) => (
-                          <div key={inv.id} className="bg-zinc-900/40 border border-zinc-800 p-3 rounded-lg flex flex-col justify-between font-mono">
-                            <div className="flex items-center justify-between text-[10px] mb-2 leading-none">
-                              <span className="text-zinc-550 mr-1.5">Bill ID: #{inv.id}</span>
-                              <Tag color={inv.status === "paid" ? 'success' : 'warning'} className="m-0 font-extrabold uppercase text-[8.5px] px-1.5 py-0.5 border-none rounded">
-                                {inv.status}
-                              </Tag>
-                            </div>
 
-                            <div className="flex items-center justify-between border-t border-slate-800/80 pt-2 font-mono">
-                              <div>
-                                <span className="text-[9px] block text-zinc-500">Plan Speed: {inv.packageName}</span>
-                                <span className="text-xs text-zinc-200 font-bold block mt-0.5">{inv.amount} PKR</span>
-                              </div>
-                              {inv.status === "unpaid" && (
-                                <AntButton
-                                  type="primary"
-                                  size="small"
-                                  onClick={() => payClientInvoice(inv.id)}
-                                  className="bg-emerald-600 hover:bg-emerald-500 border-none text-[10px] h-7 font-bold text-white px-3 rounded cursor-pointer flex items-center justify-center gap-1.5"
-                                  icon={<CreditCardOutlined className="text-white text-[12px] inline" />}
-                                >
-                                  Pay Online Gateway
-                                </AntButton>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    <div className="bg-zinc-900/20 border border-zinc-850 p-3 rounded-lg text-[9px] text-zinc-500 font-mono mt-4 leading-relaxed w-full">
-                      💡 Payments are autorun on the server. Paying reloads your expiry term and activates PPPoE connection profiles instantly.
-                    </div>
-                  </AntCard>
-                </AntCol>
 
               </AntRow>
 
@@ -1396,6 +1355,30 @@ export default function App() {
                 staff={staff}
               />
             </div>
+          ),
+        },
+        {
+          key: '2',
+          label: 'Billing History',
+          children: (
+            <AntCard className="bg-zinc-950 border border-zinc-800 rounded-2xl shadow-lg">
+              <AntTable
+                dataSource={clientBill}
+                columns={[
+                  { title: 'Date', dataIndex: 'date', key: 'date', render: (d: string) => new Date(d).toLocaleDateString() },
+                  { title: 'Type', dataIndex: 'type', key: 'type', render: (type: string) => <AntTag>{type || 'Invoice'}</AntTag> },
+                  { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (a: number) => <span className="font-mono font-bold text-zinc-300">{a} PKR</span> },
+                  { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => <AntTag color={s === 'paid' ? 'success' : 'error'}>{s}</AntTag> }
+                ]}
+                rowKey="id"
+                pagination={{ pageSize: 5 }}
+                className="billing-table"
+              />
+            </AntCard>
+          ),
+        },
+      ]}
+    />
           )}
 
         </div>

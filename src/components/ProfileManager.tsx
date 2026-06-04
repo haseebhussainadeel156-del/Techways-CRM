@@ -237,7 +237,7 @@ export default function ProfileManager({ profileId, profileRole, viewerId, viewe
   if (loading) {
     return (
       <div className="flex justify-center items-center py-24">
-        <Spin size="large" tip="Retreiving complete subscriber credentials and telemetry indexes..." />
+        <Spin size="large" description="Retreiving complete subscriber credentials and telemetry indexes..." />
       </div>
     );
   }

@@ -27,6 +27,8 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
   const [editingCustomer, setEditingCustomer] = useState<CustomerSubscriber | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState('All');
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [bulkActionSummary, setBulkActionSummary] = useState<{ visible: boolean; action: string; names: string[] }>({ visible: false, action: '', names: [] });
 
   const myReseller = resellers.find(r => r.id === currentLevelId);
   const filteredPackages = (currentRole === UserRole.ADMIN || !myReseller)
@@ -43,6 +45,27 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
           }
           return p;
         });
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+  };
+
+  const handleBulkAction = async (action: 'disable' | 'assign', packageId?: string) => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('Please select customers first');
+      return;
+    }
+    
+    // Map selected IDs to names
+    const names = customers.filter(c => selectedRowKeys.includes(c.id)).map(c => c.fullName);
+    
+    // For now, simple mock bulk action
+    message.success(`Applied ${action} to ${selectedRowKeys.length} customers.`);
+    
+    setBulkActionSummary({ visible: true, action, names });
+    setSelectedRowKeys([]);
+  };
 
   const loadClientData = async () => {
     setLoading(true);
@@ -310,7 +333,17 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
         }
         className="shadow-sm border-gray-200"
         extra={
-          <Space>
+          <div className="flex items-center gap-2">
+            {selectedRowKeys.length > 0 && (
+              <>
+                <Button danger icon={<LockOutlined />} onClick={() => handleBulkAction('disable')}>
+                  Disable ({selectedRowKeys.length})
+                </Button>
+                <Select placeholder="Assign Package" style={{ width: 150 }} onChange={(val) => handleBulkAction('assign', val)}>
+                  {filteredPackages.map(p => <Option key={p.id} value={p.id}>{p.name}</Option>)}
+                </Select>
+              </>
+            )}
             <Select
               value={statusFilter}
               onChange={setStatusFilter}
@@ -334,7 +367,7 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
                 Onboard Client
               </Button>
             )}
-          </Space>
+          </div>
         }
       >
         {/* Add client profile container */}
@@ -485,6 +518,7 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
           size="middle"
           scroll={{ x: 800 }}
           expandable={{ expandedRowRender }}
+          rowSelection={rowSelection}
         />
       </Card>
 
@@ -626,6 +660,21 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
             <Button type="primary" htmlType="submit">Save Changes</Button>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Bulk Action Summary Modal */}
+      <Modal
+        title={`Bulk Action Summary: ${bulkActionSummary.action.toUpperCase()}`}
+        open={bulkActionSummary.visible}
+        onOk={() => setBulkActionSummary({ visible: false, action: '', names: [] })}
+        onCancel={() => setBulkActionSummary({ visible: false, action: '', names: [] })}
+      >
+        <p>The following customers have been modified:</p>
+        <ul className="list-disc pl-5">
+          {bulkActionSummary.names.map((name, idx) => (
+            <li key={idx}>{name}</li>
+          ))}
+        </ul>
       </Modal>
 
       {/* BILLING MANAGEMENT / MONTHLY INVOICE STATEMENT TRACKER */}

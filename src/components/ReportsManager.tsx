@@ -55,7 +55,7 @@ export default function ReportsManager({ currentLevelId, currentRole }: ReportsM
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Spin size="large" tip="Loading comprehensive reports..." />
+        <Spin size="large" description="Loading comprehensive reports..." />
       </div>
     );
   }
