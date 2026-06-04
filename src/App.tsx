@@ -320,6 +320,50 @@ export default function App() {
     }
   };
 
+  const handleLogout = (message?: string) => {
+    localStorage.removeItem("nexus_logged_in");
+    localStorage.removeItem("nexus_role");
+    localStorage.removeItem("nexus_user_id");
+    localStorage.removeItem("nexus_username");
+    setIsLoggedIn(false);
+    setCurrentRole(UserRole.ADMIN);
+    setCurrentId("admin");
+    navigate("/");
+    if (message) {
+      antMessage.info(message);
+    }
+  };
+
+  // Activity timer logic
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    let timeout: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      clearTimeout(timeout);
+      // 30 minutes in milliseconds
+      timeout = setTimeout(() => {
+        handleLogout("You have been logged out due to inactivity.");
+      }, 30 * 60 * 1000);
+    };
+
+    window.addEventListener('mousedown', resetTimer);
+    window.addEventListener('keydown', resetTimer);
+    window.addEventListener('scroll', resetTimer);
+    window.addEventListener('mousemove', resetTimer);
+
+    resetTimer(); // Initialize timer
+
+    return () => {
+      window.removeEventListener('mousedown', resetTimer);
+      window.removeEventListener('keydown', resetTimer);
+      window.removeEventListener('scroll', resetTimer);
+      window.removeEventListener('mousemove', resetTimer);
+      clearTimeout(timeout);
+    };
+  }, [isLoggedIn]);
+
   // Synchronize component data feeds
   useEffect(() => {
     loadPackages();
@@ -553,16 +597,7 @@ export default function App() {
 
           <AntButton
             id="header-logout-btn"
-            onClick={() => {
-              localStorage.removeItem("nexus_logged_in");
-              localStorage.removeItem("nexus_role");
-              localStorage.removeItem("nexus_user_id");
-              localStorage.removeItem("nexus_username");
-              setIsLoggedIn(false);
-              setCurrentRole(UserRole.ADMIN);
-              setCurrentId("admin");
-              navigate("/");
-            }}
+            onClick={() => handleLogout()}
             danger
             type="primary"
             className="flex items-center justify-center w-8.5 h-8.5 bg-rose-950/20 border border-rose-900/30 hover:border-rose-500/50 hover:bg-rose-900/40 text-rose-400 cursor-pointer rounded-xl transition-all p-0 h-8.5 w-8.5 shrink-0"
