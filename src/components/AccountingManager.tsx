@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
-import { Card, Row, Col, Typography, Table, Tag, Space, Tabs } from 'antd';
+import { Card, Typography, Table, Tag, Space, Tabs, DatePicker } from 'antd';
 import { DollarSign, PieChart, FileText } from 'lucide-react';
+import dayjs from 'dayjs';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 
 const { Title } = Typography;
+const { RangePicker } = DatePicker;
 
 interface FinancialRecord {
   id: string;
@@ -20,6 +27,14 @@ const mockFinancialData: FinancialRecord[] = [
 ];
 
 export default function AccountingManager() {
+  const [dateRange, setDateRange] = useState<any>(null);
+
+  const filteredData = mockFinancialData.filter(record => {
+    if (!dateRange || !dateRange[0] || !dateRange[1]) return true;
+    const recordDate = dayjs(record.date);
+    return recordDate.isSameOrAfter(dateRange[0], 'day') && recordDate.isSameOrBefore(dateRange[1], 'day');
+  });
+
   const columns = [
     { title: 'Date', dataIndex: 'date', key: 'date' },
     { title: 'Type', dataIndex: 'type', key: 'type', render: (t: string) => <Tag>{t}</Tag> },
@@ -30,7 +45,10 @@ export default function AccountingManager() {
 
   return (
     <div className="space-y-6">
-      <Title level={4}><Space><DollarSign className="text-emerald-500" /> Accounting Module</Space></Title>
+      <div className="flex items-center justify-between">
+        <Title level={4} className="m-0"><Space><DollarSign className="text-emerald-500" /> Accounting Module</Space></Title>
+        <RangePicker onChange={(dates) => setDateRange(dates)} />
+      </div>
       
       <Tabs 
         defaultActiveKey="1"
@@ -40,7 +58,7 @@ export default function AccountingManager() {
             label: <span><FileText className="w-4 h-4 mr-2" />Detailed Ledger</span>,
             children: (
               <Card>
-                <Table dataSource={mockFinancialData} columns={columns} rowKey="id" />
+                <Table dataSource={filteredData} columns={columns} rowKey="id" />
               </Card>
             ),
           },
@@ -49,7 +67,7 @@ export default function AccountingManager() {
             label: <span><PieChart className="w-4 h-4 mr-2" />Financial Reports</span>,
             children: (
               <Card>
-                <p className="text-zinc-500">Financial reports overview (Income Statement, Balance Sheet, etc.) will be displayed here.</p>
+                <p className="text-zinc-500">Financial reports for the selected period will be generated here.</p>
               </Card>
             ),
           }
