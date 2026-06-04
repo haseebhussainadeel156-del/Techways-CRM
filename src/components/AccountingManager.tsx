@@ -13,17 +13,22 @@ const { RangePicker } = DatePicker;
 
 interface FinancialRecord {
   id: string;
-  type: 'Invoice' | 'Payment' | 'Adjustment';
+  customerId: string;
+  type: 'Invoice' | 'Payment';
   date: string;
   description: string;
-  amount: number;
-  status: 'Completed' | 'Pending' | 'Cancelled';
+  amountDue: number;
+  amountPaid: number;
+  status: 'Paid' | 'Pending' | 'Partially Paid' | 'Overdue';
+  billingPeriodStart?: string;
+  billingPeriodEnd?: string;
+  dueDate?: string;
 }
 
 const mockFinancialData: FinancialRecord[] = [
-  { id: 'REC-001', type: 'Invoice', date: '2026-06-01', description: 'Monthly Subscription - June', amount: 5000, status: 'Completed' },
-  { id: 'REC-002', type: 'Payment', date: '2026-06-02', description: 'Credit Card Payment', amount: 5000, status: 'Completed' },
-  { id: 'REC-003', type: 'Invoice', date: '2026-06-03', description: 'Device Rental Fee', amount: 1500, status: 'Pending' },
+  { id: 'REC-001', customerId: 'CUST-01', type: 'Invoice', date: '2026-06-01', description: 'Monthly Subscription', amountDue: 5000, amountPaid: 5000, status: 'Paid', billingPeriodStart: '2026-06-01', billingPeriodEnd: '2026-06-30' },
+  { id: 'REC-002', customerId: 'CUST-02', type: 'Invoice', date: '2026-06-01', description: 'Service Activation', amountDue: 2000, amountPaid: 0, status: 'Pending', dueDate: '2026-06-15' },
+  { id: 'REC-003', customerId: 'CUST-03', type: 'Invoice', date: '2026-06-01', description: 'Advance Billing (3 Months)', amountDue: 15000, amountPaid: 5000, status: 'Partially Paid', billingPeriodStart: '2026-06-01', billingPeriodEnd: '2026-08-31' },
 ];
 
 export default function AccountingManager() {
@@ -37,10 +42,15 @@ export default function AccountingManager() {
 
   const columns = [
     { title: 'Date', dataIndex: 'date', key: 'date' },
-    { title: 'Type', dataIndex: 'type', key: 'type', render: (t: string) => <Tag>{t}</Tag> },
+    { title: 'Customer', dataIndex: 'customerId', key: 'customerId' },
     { title: 'Description', dataIndex: 'description', key: 'description' },
-    { title: 'Amount (PKR)', dataIndex: 'amount', key: 'amount', render: (a: number) => a.toLocaleString() },
-    { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => <Tag color={s === 'Completed' ? 'success' : s === 'Pending' ? 'warning' : 'error'}>{s}</Tag> },
+    { title: 'Due', dataIndex: 'amountDue', key: 'amountDue', render: (a: number) => a.toLocaleString() },
+    { title: 'Paid', dataIndex: 'amountPaid', key: 'amountPaid', render: (a: number) => a.toLocaleString() },
+    { title: 'Billing Period', key: 'period', render: (r: FinancialRecord) => r.billingPeriodStart ? `${r.billingPeriodStart} to ${r.billingPeriodEnd}` : '-' },
+    { title: 'Status', dataIndex: 'status', key: 'status', render: (s: string) => {
+        const color = s === 'Paid' ? 'success' : s === 'Pending' ? 'warning' : s === 'Partially Paid' ? 'blue' : 'error';
+        return <Tag color={color}>{s}</Tag>;
+    }},
   ];
 
   return (

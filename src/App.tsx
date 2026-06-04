@@ -21,7 +21,7 @@ import ProfileManager from './components/ProfileManager';
 import GlobalSearchBar from './components/GlobalSearchBar';
 import ResellerWallet from './components/ResellerWallet';
 
-import { Card as AntCard, Row as AntRow, Col as AntCol, Space as AntSpace, Button as AntButton, Progress as AntProgress, Badge as AntBadge, Statistic as AntStatistic, Typography as AntTypography, Divider as AntDivider, Alert as AntAlert, message as antMessage, Layout, Menu, Drawer, Spin, ConfigProvider, theme, Tabs as AntTabs, Table as AntTable, Tag as AntTag } from 'antd';
+import { Card as AntCard, Row as AntRow, Col as AntCol, Space as AntSpace, Button as AntButton, Progress as AntProgress, Badge as AntBadge, Statistic as AntStatistic, Typography as AntTypography, Divider as AntDivider, Alert as AntAlert, message as antMessage, Layout, Menu, Drawer, Spin, ConfigProvider, theme, Tabs as AntTabs, Table as AntTable, Tag as AntTag, App as AntApp } from 'antd';
 import { CreditCardOutlined } from '@ant-design/icons';
 
 const { Title: AntTitle, Text: AntText } = AntTypography;
@@ -136,6 +136,7 @@ const lightThemeConfig = {
 };
 
 export default function App() {
+  const [messageApi, contextHolder] = antMessage.useMessage();
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem("nexus_theme") as 'dark' | 'light') || 'dark';
   });
@@ -331,7 +332,7 @@ export default function App() {
     setCurrentId("admin");
     navigate("/");
     if (message) {
-      antMessage.info(message);
+      messageApi.info(message);
     }
   };
 
@@ -536,7 +537,9 @@ export default function App() {
 
   return (
     <ConfigProvider theme={currentThemeConfig}>
-      <Layout className="min-h-screen bg-slate-950 font-sans text-slate-100 antialiased flex flex-col relative overflow-hidden" style={{ minHeight: '100vh', background: '#020617' }}>
+      <AntApp>
+        {contextHolder}
+        <Layout className="min-h-screen bg-slate-950 font-sans text-slate-100 antialiased flex flex-col relative overflow-hidden" style={{ minHeight: '100vh', background: '#020617' }}>
       {/* Dynamic top bar header */}
       <Layout.Header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur px-6 flex items-center justify-between h-16 relative z-20 shrink-0 mb-0 select-none" style={{ position: 'relative', top: 0, width: '100%', display: 'flex', zIndex: 1000, height: '64px', minHeight: '64px', background: '#090d1a', padding: '0 24px' }}>
         <div className="flex items-center justify-between w-full md:w-auto">
@@ -1393,7 +1396,8 @@ export default function App() {
           <span>Secure PostgreSQL backend relational simulation running live.</span>
         </div>
       </Layout.Footer>
-    </Layout>
+        </Layout>
+      </AntApp>
     </ConfigProvider>
   );
 }

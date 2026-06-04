@@ -79,7 +79,7 @@ echo -e "${GREEN}${BOLD}✓ Library installation completed successfully.${NC}"
 echo ""
 
 # 3. LEAST-PRIVILEGE SECURITY EXPLANATION & USER GENERATION
-echo -e "${CYAN}${BOLD}[Step 3/5] Security Guide: Sandbox Restricted Database User${NC}"
+echo -e "${CYAN}${BOLD}[Step 3/6] Security Guide: Sandbox Restricted Database User${NC}"
 echo -e "----------------------------------------------------------------------"
 echo -e "Running an online ISP platform using administrative superusers (e.g. 'postgres')"
 echo -e "is extremely dangerous as any vulnerability or unauthorized access can compromise"
@@ -90,6 +90,28 @@ echo -e "We recommend creating a specialized, unprivileged PostgreSQL database u
 echo -e "named ${YELLOW}nexus_app${NC} which is strictly isolated to regular table CRUD operations"
 echo -e "and cannot run database management DDL lines, access file system, or drop structures."
 echo ""
+read -p "Would you like the script to bootstrap the database (requires superuser access)? (y/n): " bootstrap_db
+
+if [[ "$bootstrap_db" =~ ^[Yy]$ ]]; then
+    read -p "Superuser Username (e.g., postgres): " SUP_USER
+    read -p "Superuser Password: " -s SUP_PASS
+    echo ""
+    read -p "Host (Default: localhost): " SUP_HOST
+    SUP_HOST=${SUP_HOST:-"localhost"}
+    read -p "Port (Default: 5432): " SUP_PORT
+    SUP_PORT=${SUP_PORT:-"5432"}
+
+    echo -e "${YELLOW}Bootstrapping database...${NC}"
+    # Use PGPASSWORD to bypass password prompt
+    export PGPASSWORD=$SUP_PASS
+    psql -h $SUP_HOST -p $SUP_PORT -U $SUP_USER -c "CREATE DATABASE nexus_db;" || echo "Database might already exist."
+    psql -h $SUP_HOST -p $SUP_PORT -U $SUP_USER -c "CREATE USER nexus_app WITH PASSWORD 'nexus123';" || echo "User might already exist."
+    psql -h $SUP_HOST -p $SUP_PORT -U $SUP_USER -d nexus_db -f database_dump.sql
+    psql -h $SUP_HOST -p $SUP_PORT -U $SUP_USER -d nexus_db -c "GRANT ALL PRIVILEGES ON DATABASE nexus_db TO nexus_app; GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO nexus_app; GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO nexus_app;"
+    unset PGPASSWORD
+    echo -e "${GREEN}Database bootstrapped successfully.${NC}"
+fi
+
 echo -e "${BOLD}Recommended PostgreSQL Initialization Matrix:${NC}"
 echo -e "----------------------------------------------------------------------"
 echo -e "1. Open pgAdmin, or connect to your database shell using psql as superuser."
