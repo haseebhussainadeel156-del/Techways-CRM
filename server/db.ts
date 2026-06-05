@@ -864,11 +864,17 @@ export class FileDB {
   async get(): Promise<DatabaseSchema> {
     const pgPool = getPool();
     if (pgPool) {
-      const client = await pgPool.connect();
+      let client;
       try {
-        return await this.readPostgres(client);
-      } finally {
-        client.release();
+        client = await pgPool.connect();
+        try {
+          return await this.readPostgres(client);
+        } finally {
+          client.release();
+        }
+      } catch (err) {
+        console.error("PostgreSQL connection or read failed. Falling back to local store JSON.", err);
+        return this.readLocal();
       }
     }
     return this.readLocal();
@@ -878,19 +884,28 @@ export class FileDB {
   async update<K extends keyof DatabaseSchema>(key: K, callback: (arg: DatabaseSchema[K]) => DatabaseSchema[K]): Promise<void> {
     const pgPool = getPool();
     if (pgPool) {
-      const client = await pgPool.connect();
+      let client;
       try {
-        const schema = await this.readPostgres(client);
-        schema[key] = callback(schema[key]);
-        
-        // Save local JSON backup
-        this.writeLocal(schema);
-        
-        // Sync modified key to Postgres live
-        await syncCollectionToPostgres(client, key, schema[key]);
+        client = await pgPool.connect();
+        try {
+          const schema = await this.readPostgres(client);
+          schema[key] = callback(schema[key]);
+          
+          // Save local JSON backup
+          this.writeLocal(schema);
+          
+          // Sync modified key to Postgres live
+          await syncCollectionToPostgres(client, key, schema[key]);
+          return;
+        } finally {
+          client.release();
+        }
+      } catch (err) {
+        console.error(`PostgreSQL update or sync failed for key '${key}'. Falling back to local store JSON only.`, err);
+        const localData = this.readLocal();
+        localData[key] = callback(localData[key]);
+        this.writeLocal(localData);
         return;
-      } finally {
-        client.release();
       }
     }
 
@@ -903,29 +918,41 @@ export class FileDB {
   async transaction(callback: (db: DatabaseSchema) => void): Promise<void> {
     const pgPool = getPool();
     if (pgPool) {
-      const client = await pgPool.connect();
+      let client;
       try {
-        await client.query('BEGIN');
-        const schema = await this.readPostgres(client);
-        callback(schema);
-        
-        // Commit changes to local file
-        this.writeLocal(schema);
+        client = await pgPool.connect();
+        try {
+          await client.query('BEGIN');
+          const schema = await this.readPostgres(client);
+          callback(schema);
+          
+          // Commit changes to local file
+          this.writeLocal(schema);
 
-        // Sync every known dataset collection back to database
-        const keys = Object.keys(TABLE_MAPPINGS) as Array<keyof DatabaseSchema>;
-        for (const key of keys) {
-          await syncCollectionToPostgres(client, key, schema[key]);
+          // Sync every known dataset collection back to database
+          const keys = Object.keys(TABLE_MAPPINGS) as Array<keyof DatabaseSchema>;
+          for (const key of keys) {
+            await syncCollectionToPostgres(client, key, schema[key]);
+          }
+
+          await client.query('COMMIT');
+          return;
+        } catch (txErr) {
+          try {
+            await client.query('ROLLBACK');
+          } catch (rbErr) {
+            // ignore rollback error if connection lost
+          }
+          throw txErr;
+        } finally {
+          client.release();
         }
-
-        await client.query('COMMIT');
-        return;
       } catch (err) {
-        await client.query('ROLLBACK');
-        console.error("PostgreSQL Transaction aborted.", err);
-        throw err;
-      } finally {
-        client.release();
+        console.error("PostgreSQL Transaction failed/aborted. Falling back to local store JSON transaction.", err);
+        const localData = this.readLocal();
+        callback(localData);
+        this.writeLocal(localData);
+        return;
       }
     }
 
