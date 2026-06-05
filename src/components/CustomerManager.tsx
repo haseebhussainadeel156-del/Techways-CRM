@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CustomerSubscriber, BandwidthPackage, UserRole, Invoice } from '../types';
-import { Form, Input, InputNumber, Select, Button, Card, Table, Tag, Popconfirm, message, Row, Col, Typography, Space, Spin, Modal } from 'antd';
+import { Form, Input, InputNumber, Select, Button, Card, Table, Tag, Popconfirm, message, Row, Col, Typography, Space, Spin, Modal, Skeleton } from 'antd';
 import { SearchOutlined, UserAddOutlined, CreditCardOutlined, InfoCircleOutlined, LockOutlined, UnlockOutlined } from '@ant-design/icons';
 import { Users } from 'lucide-react';
 
@@ -692,55 +692,59 @@ export default function CustomerManager({ currentLevelId, currentRole, packages,
         </Text>
         
         <Spin spinning={loading}>
-          <Row gutter={[16, 16]}>
-            {invoices.length === 0 ? (
-              <Col span={24}>
-                <div className="text-center py-8 text-gray-400">
-                  No subscription bills recorded under this reseller cluster.
-                </div>
-              </Col>
-            ) : (
-              invoices.map((inv) => (
-                <Col xs={24} md={12} lg={8} key={inv.id}>
-                  <Card size="small" className={`border-t-4 ${inv.status === 'paid' ? 'border-t-green-500' : 'border-t-yellow-500'}`}>
-                    <div className="flex justify-between items-start mb-4">
-                      <Tag color="default">#{inv.id}</Tag>
-                      <Tag color={inv.status === 'paid' ? 'success' : 'warning'}>
-                        {inv.status.toUpperCase()}
-                      </Tag>
-                    </div>
-                    
-                    <div className="mb-4">
-                      <Title level={5} className="mb-1 m-0 p-0 leading-tight">{inv.customerName}</Title>
-                      <div className="text-xs text-gray-500">Plan: {inv.packageName}</div>
-                      <div className="text-xs text-gray-500">Cycle: {new Date(inv.billingDate).toLocaleDateString()}</div>
-                    </div>
-
-                    <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                      <Text strong className="text-lg">{inv.amount.toLocaleString()} PKR</Text>
-                      {inv.status === "unpaid" ? (
-                        <Popconfirm
-                          title="Authorize Wallet Pay"
-                          description="Process payment using reseller wallet?"
-                          onConfirm={() => handlePayInvoice(inv.id, inv.amount)}
-                          okText="Yes"
-                          cancelText="Cancel"
-                        >
-                          <Button type="primary" className="bg-green-600 hover:bg-green-500" size="small">
-                            Pay Now
-                          </Button>
-                        </Popconfirm>
-                      ) : (
-                        <Text type="secondary" className="text-xs">
-                          {inv.paymentMethod}
-                        </Text>
-                      )}
-                    </div>
-                  </Card>
+          {loading ? (
+             <Skeleton active paragraph={{ rows: 4 }} />
+          ) : (
+            <Row gutter={[16, 16]}>
+              {invoices.length === 0 ? (
+                <Col span={24}>
+                  <div className="text-center py-8 text-gray-400">
+                    No subscription bills recorded under this reseller cluster.
+                  </div>
                 </Col>
-              ))
-            )}
-          </Row>
+              ) : (
+                invoices.map((inv) => (
+                  <Col xs={24} md={12} lg={8} key={inv.id}>
+                    <Card size="small" className={`border-t-4 ${inv.status === 'paid' ? 'border-t-green-500' : 'border-t-yellow-500'}`}>
+                      <div className="flex justify-between items-start mb-4">
+                        <Tag color="default">#{inv.id}</Tag>
+                        <Tag color={inv.status === 'paid' ? 'success' : 'warning'}>
+                          {inv.status.toUpperCase()}
+                        </Tag>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <Title level={5} className="mb-1 m-0 p-0 leading-tight">{inv.customerName}</Title>
+                        <div className="text-xs text-gray-500">Plan: {inv.packageName}</div>
+                        <div className="text-xs text-gray-500">Cycle: {new Date(inv.billingDate).toLocaleDateString()}</div>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                        <Text strong className="text-lg">{inv.amount.toLocaleString()} PKR</Text>
+                        {inv.status === "unpaid" ? (
+                          <Popconfirm
+                            title="Authorize Wallet Pay"
+                            description="Process payment using reseller wallet?"
+                            onConfirm={() => handlePayInvoice(inv.id, inv.amount)}
+                            okText="Yes"
+                            cancelText="Cancel"
+                          >
+                            <Button type="primary" className="bg-green-600 hover:bg-green-500" size="small">
+                              Pay Now
+                            </Button>
+                          </Popconfirm>
+                        ) : (
+                          <Text type="secondary" className="text-xs">
+                            {inv.paymentMethod}
+                          </Text>
+                        )}
+                      </div>
+                    </Card>
+                  </Col>
+                ))
+              )}
+            </Row>
+          )}
         </Spin>
       </Card>
     </div>
