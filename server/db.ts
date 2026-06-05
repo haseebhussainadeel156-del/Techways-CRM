@@ -803,7 +803,8 @@ export class FileDB {
     try {
       if (fs.existsSync(STORAGE_FILE)) {
         const fileContent = fs.readFileSync(STORAGE_FILE, 'utf-8');
-        return JSON.parse(fileContent) as DatabaseSchema;
+        const parsed = JSON.parse(fileContent);
+        return { ...INITIAL_DB, ...parsed } as DatabaseSchema;
       }
     } catch (e) {
       console.error("Local JSON state corrupted, fallback resetting...", e);

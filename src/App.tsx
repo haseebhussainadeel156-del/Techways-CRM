@@ -368,6 +368,8 @@ export default function App() {
 
   // Synchronize component data feeds
   useEffect(() => {
+    if (!isLoggedIn) return;
+
     loadPackages();
     loadTelemetry();
     loadWorkspaceStats();
@@ -391,17 +393,18 @@ export default function App() {
         }
       }
     }
-  }, [currentRole, currentId]);
+  }, [currentRole, currentId, isLoggedIn]);
 
   // Interval trigger for ticking telemetry graphs in real-time
   useEffect(() => {
+    if (!isLoggedIn) return;
     const timer = setInterval(() => {
       if ((activeTab === "telemetry" || activeTab === "dashboard") && currentRole !== UserRole.CUSTOMER) {
         loadTelemetry();
       }
     }, 4500);
     return () => clearInterval(timer);
-  }, [activeTab, currentRole]);
+  }, [activeTab, currentRole, isLoggedIn]);
 
   const handleRoleChange = (role: UserRole, id: string) => {
     // Graceful routing when role simulation switches
