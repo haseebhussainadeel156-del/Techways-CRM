@@ -61,6 +61,15 @@ else
     echo -e "  - Git Source Control: ${GREEN}Active${NC}"
 fi
 
+# Check/Install PM2
+if ! command -v pm2 &> /dev/null; then
+    echo -e "${YELLOW}PM2 not found. Installing PM2 globally...${NC}"
+    npm install -g pm2
+    echo -e "  - PM2 Installed: ${GREEN}Active${NC}"
+else
+    echo -e "  - PM2 Manager: ${GREEN}Active${NC}"
+fi
+
 # Check Postgres client
 if ! command -v psql &> /dev/null; then
     echo -e "${YELLOW}PostgreSQL client not found. Installing...${NC}"
@@ -213,6 +222,9 @@ echo ""
 echo -e "${BLUE}${BOLD}[Step 6/6] Compiling and Bundling Nexus Portal...${NC}"
 echo -e "Building full-stack modules via Vite and esbuild server bundlers..."
 npm run build
+echo -e "Starting background process with PM2..."
+pm2 delete nexus-isp 2>/dev/null || true
+pm2 start dist/server.cjs --name "nexus-isp"
 echo ""
 echo -e "${GREEN}${BOLD}======================================================================${NC}"
 echo -e "${GREEN}${BOLD}             ✓ NEXUS BROADBAND PLATFORM SUITE IS READY!               ${NC}"

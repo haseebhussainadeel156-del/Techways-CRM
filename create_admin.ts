@@ -14,7 +14,8 @@ async function main() {
   const phone = readline.question("Phone Number: ");
   const location = readline.question("Location: ");
   const address = readline.question("Address: ");
-  const joiningDate = readline.question("Joining Date (YYYY-MM-DD): ");
+  const joiningDateInput = readline.question("Joining Date (YYYY-MM-DD): ");
+  const joiningDate = joiningDateInput.trim() === "" ? null : joiningDateInput;
 
   let password = "";
   while (true) {
