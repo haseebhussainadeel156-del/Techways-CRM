@@ -102,13 +102,14 @@ if [[ "$bootstrap_db" =~ ^[Yy]$ ]]; then
     SUP_PORT=${SUP_PORT:-"5432"}
 
     echo -e "${YELLOW}Bootstrapping database...${NC}"
-    # Use PGPASSWORD to bypass password prompt
-    export PGPASSWORD=$SUP_PASS
-    psql -h $SUP_HOST -p $SUP_PORT -U $SUP_USER -c "CREATE DATABASE nexus_db;" || echo "Database might already exist."
-    psql -h $SUP_HOST -p $SUP_PORT -U $SUP_USER -c "CREATE USER nexus_app WITH PASSWORD 'nexus123';" || echo "User might already exist."
-    psql -h $SUP_HOST -p $SUP_PORT -U $SUP_USER -d nexus_db -f database_dump.sql
-    psql -h $SUP_HOST -p $SUP_PORT -U $SUP_USER -d nexus_db -c "GRANT ALL PRIVILEGES ON DATABASE nexus_db TO nexus_app; GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO nexus_app; GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO nexus_app;"
-    unset PGPASSWORD
+    read -p "Database password for nexus_app: " DB_PASS_INPUT
+    DB_PASS=${DB_PASS:-$DB_PASS_INPUT}
+    
+    # Use sudo to run as postgres user
+    sudo -u postgres createdb nexus_db || echo "Database might already exist."
+    sudo -u postgres psql -d nexus_db -c "CREATE USER nexus_app WITH PASSWORD '$DB_PASS_INPUT';" || echo "User might already exist."
+    sudo -u postgres psql -d nexus_db -f database_dump.sql
+    sudo -u postgres psql -d nexus_db -c "GRANT ALL PRIVILEGES ON DATABASE nexus_db TO nexus_app; GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO nexus_app; GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO nexus_app;"                
     echo -e "${GREEN}Database bootstrapped successfully.${NC}"
 fi
 
@@ -163,8 +164,11 @@ if [[ "$overwrite" =~ ^[Yy]$ ]]; then
     read -p "PostgreSQL User (Recommended: nexus_app): " DB_USER
     DB_USER=${DB_USER:-"nexus_app"}
 
-    read -p "PostgreSQL User Password: " -s DB_PASS
-    echo ""
+    if [ -z "$DB_PASS" ]; then
+        read -p "PostgreSQL User Password: " -s DB_PASS
+        echo ""
+    fi
+    # No prompt if DB_PASS is already set
 
     read -p "PostgreSQL Connection Port (Default: 5432): " DB_PORT
     DB_PORT=${DB_PORT:-"5432"}
