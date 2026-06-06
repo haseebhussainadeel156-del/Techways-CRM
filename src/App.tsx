@@ -150,19 +150,11 @@ export default function App() {
   const currentThemeConfig = themeMode === 'dark' ? darkThemeConfig : lightThemeConfig;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   // Authentication & session state
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return localStorage.getItem("nexus_logged_in") === "true";
-  });
-  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
-    const savedRole = localStorage.getItem("nexus_role") as UserRole;
-    return savedRole || UserRole.ADMIN;
-  });
-  const [currentId, setCurrentId] = useState<string>(() => {
-    return localStorage.getItem("nexus_user_id") || "admin";
-  });
-  const [loggedInName, setLoggedInName] = useState<string>(() => {
-    return localStorage.getItem("nexus_username") || "Super Admin";
-  });
+  const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [currentRole, setCurrentRole] = useState<UserRole>(UserRole.ADMIN);
+  const [currentId, setCurrentId] = useState<string>("admin");
+  const [loggedInName, setLoggedInName] = useState<string>("Super Admin");
 
   // Core global data states
   const [packages, setPackages] = useState<BandwidthPackage[]>([]);
@@ -322,11 +314,26 @@ export default function App() {
     }
   };
 
-  const handleLogout = (message?: string) => {
+  const handleLogout = async (message?: string) => {
+    const sessionId = localStorage.getItem("nexus_session_id") || "";
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-nexus-session-id': sessionId
+        },
+        body: JSON.stringify({ sessionId })
+      });
+    } catch (e) {
+      console.error("Logout API failure", e);
+    }
+
     localStorage.removeItem("nexus_logged_in");
     localStorage.removeItem("nexus_role");
     localStorage.removeItem("nexus_user_id");
     localStorage.removeItem("nexus_username");
+    localStorage.removeItem("nexus_session_id");
     setIsLoggedIn(false);
     setCurrentRole(UserRole.ADMIN);
     setCurrentId("admin");
@@ -335,6 +342,110 @@ export default function App() {
       messageApi.info(message);
     }
   };
+
+  // Check active server session on page load
+  useEffect(() => {
+    const checkSession = async () => {
+      const savedRole = localStorage.getItem("nexus_role");
+      const savedId = localStorage.getItem("nexus_user_id");
+      const sessionId = localStorage.getItem("nexus_session_id") || "";
+
+      const queryParams = new URLSearchParams();
+      if (sessionId) queryParams.set("sessionId", sessionId);
+      if (savedId) queryParams.set("fallbackUserId", savedId);
+      if (savedRole) queryParams.set("fallbackRole", savedRole);
+
+      try {
+        const res = await fetch(`/api/auth/session?${queryParams.toString()}`, {
+          headers: {
+            'x-nexus-session-id': sessionId
+          }
+        });
+        const data = await res.json();
+
+        if (res.ok && data.isLoggedIn && data.user) {
+          localStorage.setItem("nexus_logged_in", "true");
+          localStorage.setItem("nexus_role", data.user.role);
+          localStorage.setItem("nexus_user_id", data.user.id);
+          localStorage.setItem("nexus_username", data.user.name);
+          if (data.sessionId) {
+            localStorage.setItem("nexus_session_id", data.sessionId);
+          }
+          
+          setIsLoggedIn(true);
+          setCurrentRole(data.user.role);
+          setCurrentId(data.user.id);
+          setLoggedInName(data.user.name);
+
+          // Graceful starting navigation
+          if (data.user.role === UserRole.CUSTOMER) {
+            navigate("/portal");
+          } else if (rawPath === "" || rawPath === "portal") {
+            navigate("/dashboard");
+          } else {
+            navigate(`/${rawPath}`);
+          }
+        } else {
+          localStorage.removeItem("nexus_logged_in");
+          localStorage.removeItem("nexus_role");
+          localStorage.removeItem("nexus_user_id");
+          localStorage.removeItem("nexus_username");
+          localStorage.removeItem("nexus_session_id");
+          setIsLoggedIn(false);
+          navigate("/");
+        }
+      } catch (err) {
+        console.error("Session verification failed on startup", err);
+        // Fallback gracefully to local storage offline/cached mode if the server is temporarily unreachable
+        const loggedInFlag = localStorage.getItem("nexus_logged_in") === "true";
+        if (loggedInFlag && savedRole && savedId) {
+          setIsLoggedIn(true);
+          setCurrentRole(savedRole as UserRole);
+          setCurrentId(savedId);
+          setLoggedInName(localStorage.getItem("nexus_username") || "Super Admin");
+        }
+      } finally {
+        setIsCheckingSession(false);
+      }
+    };
+
+    checkSession();
+  }, []);
+
+  // Heartbeat session validator
+  useEffect(() => {
+    if (!isLoggedIn || isCheckingSession) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const sessionId = localStorage.getItem("nexus_session_id") || "";
+        const savedId = localStorage.getItem("nexus_user_id") || "";
+        const savedRole = localStorage.getItem("nexus_role") || "";
+
+        const queryParams = new URLSearchParams();
+        if (sessionId) queryParams.set("sessionId", sessionId);
+        if (savedId) queryParams.set("fallbackUserId", savedId);
+        if (savedRole) queryParams.set("fallbackRole", savedRole);
+
+        const res = await fetch(`/api/auth/session?${queryParams.toString()}`, {
+          headers: {
+            'x-nexus-session-id': sessionId
+          }
+        });
+        const data = await res.json();
+        if (!res.ok || !data.isLoggedIn) {
+          console.warn("[Heartbeat] Session validating failed. Auto-signing out.");
+          handleLogout("Your secure session has expired. Please sign in again.");
+        } else if (data.sessionId && data.sessionId !== sessionId) {
+          localStorage.setItem("nexus_session_id", data.sessionId);
+        }
+      } catch (e) {
+        console.error("[Heartbeat] Endpoint checking offline or unreachable.", e);
+      }
+    }, 45000); // 45s interval
+
+    return () => clearInterval(interval);
+  }, [isLoggedIn, isCheckingSession]);
 
   // Activity timer logic
   useEffect(() => {
@@ -514,15 +625,29 @@ export default function App() {
   const downloadSpeed = lastLog ? (lastLog.rxMbps ?? 1450) : 1450;
   const uploadSpeed = lastLog ? (lastLog.txMbps ?? 980) : 980;
 
+  if (isCheckingSession) {
+    return (
+      <ConfigProvider theme={currentThemeConfig}>
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center font-sans gap-4" style={{ minHeight: '100vh', background: '#020617' }}>
+          <Spin size="large" description="Verifying secure session..." />
+          <p className="text-slate-400 font-mono text-xs animate-pulse mt-2">Checking with Nexus Core Subsystem...</p>
+        </div>
+      </ConfigProvider>
+    );
+  }
+
   if (!isLoggedIn) {
     return (
       <ConfigProvider theme={currentThemeConfig}>
         <LoginPage
-          onLoginSuccess={(user) => {
+          onLoginSuccess={(user, sessionId) => {
             localStorage.setItem("nexus_logged_in", "true");
             localStorage.setItem("nexus_role", user.role);
             localStorage.setItem("nexus_user_id", user.id);
             localStorage.setItem("nexus_username", user.name);
+            if (sessionId) {
+              localStorage.setItem("nexus_session_id", sessionId);
+            }
             setIsLoggedIn(true);
             setCurrentRole(user.role);
             setCurrentId(user.id);

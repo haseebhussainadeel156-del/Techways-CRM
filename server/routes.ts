@@ -78,6 +78,170 @@ async function syncRadiusCustomer(username: string, password?: string, packageId
   }
 }
 
+
+import fs from 'fs';
+import path from 'path';
+
+const SESSION_CACHE_FILE = path.join(process.cwd(), 'server_sessions.cache.json');
+
+interface SessionData {
+  user: {
+    id: string;
+    role: UserRole;
+    name: string;
+    email: string;
+    location?: string;
+    staffId?: string;
+  };
+  createdAt: number;
+}
+
+let ACTIVE_SESSIONS = new Map<string, SessionData>();
+
+// Helper to parse cookies from headers
+function parseCookies(cookieHeader?: string): Record<string, string> {
+  const list: Record<string, string> = {};
+  if (!cookieHeader) return list;
+  cookieHeader.split(';').forEach((cookie) => {
+    const parts = cookie.split('=');
+    const name = parts.shift()?.trim();
+    if (name) {
+      list[name] = decodeURIComponent(parts.join('='));
+    }
+  });
+  return list;
+}
+
+// Load sessions from disk on startup
+try {
+  if (fs.existsSync(SESSION_CACHE_FILE)) {
+    const data = fs.readFileSync(SESSION_CACHE_FILE, 'utf-8');
+    const parsed = JSON.parse(data);
+    ACTIVE_SESSIONS = new Map(Object.entries(parsed));
+    console.log(`[SessionManager] Loaded ${ACTIVE_SESSIONS.size} active sessions from disk cache.`);
+  }
+} catch (err) {
+  console.error("[SessionManager] Failed to load sessions from disk cache:", err);
+}
+
+// Save sessions to disk
+function saveSessionsToDisk() {
+  try {
+    const obj = Object.fromEntries(ACTIVE_SESSIONS);
+    fs.writeFileSync(SESSION_CACHE_FILE, JSON.stringify(obj, null, 2), 'utf-8');
+  } catch (err) {
+    console.error("[SessionManager] Failed to save sessions to disk cache:", err);
+  }
+}
+
+// Helper to initialize session and cookie
+function createSessionForUser(res: express.Response, user: any): string {
+  const sessionId = genId('sess');
+  ACTIVE_SESSIONS.set(sessionId, {
+    user,
+    createdAt: Date.now()
+  });
+  saveSessionsToDisk();
+
+  res.cookie('nexus_session', sessionId, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    maxAge: 24 * 60 * 60 * 1000
+  });
+
+  return sessionId;
+}
+
+// GET /auth/session - Verify the session status of active user
+router.get('/auth/session', async (req, res) => {
+  const cookies = parseCookies(req.headers.cookie);
+  const sessionId = (req.headers['x-nexus-session-id'] as string) || cookies['nexus_session'] || (req.query.sessionId as string);
+
+  if (sessionId && ACTIVE_SESSIONS.has(sessionId)) {
+    const session = ACTIVE_SESSIONS.get(sessionId)!;
+    return res.json({
+      success: true,
+      isLoggedIn: true,
+      user: session.user,
+      sessionId
+    });
+  }
+
+  // Graceful self-healing fallback for page reload / server restarts:
+  // If the client has a stored user_id and role fallback parameters,
+  // we verify if they actually exist in our db. If they do, we re-establish a session automatically!
+  const fallbackUserId = req.query.fallbackUserId as string;
+  const fallbackRole = req.query.fallbackRole as string;
+
+  if (fallbackUserId && fallbackRole) {
+    const db = await dbInstance.get();
+    let foundUser: any = null;
+
+    if (fallbackRole === UserRole.ADMIN) {
+      foundUser = db.admins?.find(a => a.id === fallbackUserId);
+    } else if (fallbackRole === UserRole.CUSTOMER) {
+      foundUser = db.customers?.find(c => c.id === fallbackUserId);
+    } else if (fallbackRole === UserRole.HRM_STAFF) {
+      foundUser = db.hrmStaff?.find(s => s.levelId === fallbackUserId || s.id === fallbackUserId);
+    } else {
+      foundUser = db.resellers?.find(r => r.id === fallbackUserId && r.role === fallbackRole);
+    }
+
+    if (foundUser) {
+      const newSessionId = sessionId || genId('sess');
+      const sessionUser = {
+        id: fallbackUserId,
+        role: fallbackRole as UserRole,
+        name: foundUser.name || foundUser.fullName || foundUser.ownerName || fallbackUserId,
+        email: foundUser.email || "",
+        location: foundUser.location || foundUser.address || ""
+      };
+
+      ACTIVE_SESSIONS.set(newSessionId, {
+        user: sessionUser,
+        createdAt: Date.now()
+      });
+      saveSessionsToDisk();
+
+      // Return recovery response
+      res.cookie('nexus_session', newSessionId, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        maxAge: 24 * 60 * 60 * 1000
+      });
+
+      return res.json({
+        success: true,
+        isLoggedIn: true,
+        user: sessionUser,
+        sessionId: newSessionId,
+        recovered: true
+      });
+    }
+  }
+
+  return res.json({
+    success: false,
+    isLoggedIn: false
+  });
+});
+
+// POST /auth/logout - End active user session
+router.post('/auth/logout', (req, res) => {
+  const cookies = parseCookies(req.headers.cookie);
+  const sessionId = (req.headers['x-nexus-session-id'] as string) || cookies['nexus_session'] || req.body.sessionId;
+
+  if (sessionId) {
+    ACTIVE_SESSIONS.delete(sessionId);
+    saveSessionsToDisk();
+  }
+
+  res.clearCookie('nexus_session');
+  return res.json({ success: true, message: "Logged out clean." });
+});
+
 // 0. AUTHENTICATION LANDING ENDPOINT
 router.post('/auth/login', async (req, res) => {
   const { username, password } = req.body;
@@ -102,14 +266,18 @@ router.post('/auth/login', async (req, res) => {
     const isValid = await verifyPassword(password, admin.passwordHash);
     if (!isValid) return res.status(401).json({ error: "Invalid credentials" });
 
+    const sessionUser = {
+      id: admin.id,
+      role: UserRole.ADMIN,
+      name: admin.name,
+      email: admin.email
+    };
+    const sessionId = createSessionForUser(res, sessionUser);
+
     return res.json({
       success: true,
-      user: {
-        id: admin.id,
-        role: UserRole.ADMIN,
-        name: admin.name,
-        email: admin.email
-      }
+      sessionId,
+      user: sessionUser
     });
   }
 
@@ -123,15 +291,20 @@ router.post('/auth/login', async (req, res) => {
   if (reseller) {
     const isValid = await verifyPassword(password, reseller.passwordHash);
     if (!isValid) return res.status(401).json({ error: "Invalid credentials" });
+
+    const sessionUser = {
+      id: reseller.id,
+      role: reseller.role,
+      name: reseller.ownerName,
+      email: reseller.email,
+      location: reseller.location
+    };
+    const sessionId = createSessionForUser(res, sessionUser);
+
     return res.json({
       success: true,
-      user: {
-        id: reseller.id,
-        role: reseller.role,
-        name: reseller.ownerName,
-        email: reseller.email,
-        location: reseller.location
-      }
+      sessionId,
+      user: sessionUser
     });
   }
 
@@ -145,15 +318,20 @@ router.post('/auth/login', async (req, res) => {
   if (customer) {
     const isValid = await verifyPassword(password, customer.passwordHash);
     if (!isValid) return res.status(401).json({ error: "Invalid credentials" });
+
+    const sessionUser = {
+      id: customer.id,
+      role: UserRole.CUSTOMER,
+      name: customer.fullName,
+      email: customer.email,
+      location: customer.address
+    };
+    const sessionId = createSessionForUser(res, sessionUser);
+
     return res.json({
       success: true,
-      user: {
-        id: customer.id,
-        role: UserRole.CUSTOMER,
-        name: customer.fullName,
-        email: customer.email,
-        location: customer.address
-      }
+      sessionId,
+      user: sessionUser
     });
   }
 
@@ -166,28 +344,37 @@ router.post('/auth/login', async (req, res) => {
   if (staff) {
     const isValid = await verifyPassword(password, staff.passwordHash);
     if (!isValid) return res.status(401).json({ error: "Invalid credentials" });
+
+    const sessionUser = {
+      id: staff.levelId, // Log them into their assigned level's context
+      role: UserRole.HRM_STAFF,
+      name: staff.name,
+      email: staff.email,
+      staffId: staff.id
+    };
+    const sessionId = createSessionForUser(res, sessionUser);
+
     return res.json({
       success: true,
-      user: {
-        id: staff.levelId, // Log them into their assigned level's context
-        role: UserRole.HRM_STAFF,
-        name: staff.name,
-        email: staff.email,
-        staffId: staff.id
-      }
+      sessionId,
+      user: sessionUser
     });
   }
 
   // E. System Departments Check (for the placeholder logins in LoginPage.tsx)
   if (username.toLowerCase() === "staff@nexus.net" || username.startsWith("dept-")) {
+    const sessionUser = {
+      id: "dept-1", 
+      role: UserRole.HRM_STAFF,
+      name: "Dept Staff",
+      email: "staff@nexus.net"
+    };
+    const sessionId = createSessionForUser(res, sessionUser);
+
     return res.json({
       success: true,
-      user: {
-        id: "dept-1", // "dept-1"
-        role: UserRole.HRM_STAFF,
-        name: "Dept Staff",
-        email: "staff@nexus.net"
-      }
+      sessionId,
+      user: sessionUser
     });
   }
 

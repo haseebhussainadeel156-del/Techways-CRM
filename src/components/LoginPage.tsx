@@ -4,7 +4,7 @@ import { Key, Shield, User, Lock, ArrowRight, Briefcase, Zap, Users, Loader2, Ma
 import { motion } from 'motion/react';
 
 interface LoginPageProps {
-  onLoginSuccess: (user: { id: string; role: UserRole; name: string; username?: string }) => void;
+  onLoginSuccess: (user: { id: string; role: UserRole; name: string; username?: string }, sessionId?: string) => void;
 }
 
 export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
@@ -104,7 +104,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
           role: data.user.role,
           name: data.user.name,
           username: username
-        });
+        }, data.sessionId);
       } else {
         setErrorCode(data.error || "Authentication failed. Incorrect username/email.");
       }
@@ -164,7 +164,7 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
             role: data.user.role,
             name: data.user.name,
             username: demo.username
-          });
+          }, data.sessionId);
         } else {
           setErrorCode(data.error || "Demo selection auth sync error.");
         }
