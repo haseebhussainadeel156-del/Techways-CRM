@@ -20,6 +20,7 @@ import PermissionsManager from './components/PermissionsManager';
 import ProfileManager from './components/ProfileManager';
 import GlobalSearchBar from './components/GlobalSearchBar';
 import ResellerWallet from './components/ResellerWallet';
+import SystemLogsManager from './components/SystemLogsManager';
 
 import { Card as AntCard, Row as AntRow, Col as AntCol, Space as AntSpace, Button as AntButton, Progress as AntProgress, Badge as AntBadge, Statistic as AntStatistic, Typography as AntTypography, Divider as AntDivider, Alert as AntAlert, message as antMessage, Layout, Menu, Drawer, Spin, ConfigProvider, theme, Tabs as AntTabs, Table as AntTable, Tag as AntTag, App as AntApp } from 'antd';
 import { CreditCardOutlined } from '@ant-design/icons';
@@ -59,6 +60,7 @@ import {
   Sliders,
   BarChart,
   User,
+  ClipboardList,
   Menu as LucideMenu,
   X
 } from 'lucide-react';
@@ -589,6 +591,7 @@ export default function App() {
     { id: "packages", label: "Plan Catalogue", icon: Tag },
     { id: "policies", label: "ISP Rule Policies", icon: Sliders },
     { id: "permissions", label: "Role Permissions", icon: Shield },
+    { id: "systemlogs", label: "System Audit Logs", icon: ClipboardList },
     { id: "nas", label: "NAS & MikroTiks", icon: Server },
     { id: "portal", label: "Client Portal", icon: Wifi }
   ];
@@ -1273,6 +1276,14 @@ export default function App() {
               permissions={rolePermissions}
               onTogglePermission={handleTogglePermission}
               hrmDepartments={hrmDepartments}
+            />
+          )}
+
+          {/* SYSTEM AUDIT LOGS MANAGER */}
+          {activeTab === "systemlogs" && currentRole !== UserRole.CUSTOMER && (
+            <SystemLogsManager
+              currentRole={currentRole}
+              currentLevelId={currentId}
             />
           )}
 

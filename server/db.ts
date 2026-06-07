@@ -56,7 +56,7 @@ const INITIAL_DB: DatabaseSchema = {
       username: "admin",
       email: "admin@nexus.net",
       name: "Super Admin",
-      passwordHash: "$2a$10$vKyC4rby6H26Z.m8bOnSguGq0L5F0m835fC59hIovvU/l/G75j4I." // hash of "password123"
+      passwordHash: "$2b$10$yYAaZOJsEp7gJHvItpXTQ.IsVXQY5WrUAUTgFDWQz1ZapSAR3nwDi" // hash of "password123"
     }
   ],
   packages: [
