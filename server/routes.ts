@@ -13,13 +13,7 @@ const genId = (prefix: string) => `${prefix}-${Math.floor(1000 + Math.random() *
 // SYSTEM SETUP
 // ==========================================
 router.get('/setup/status', async (req, res) => {
-  try {
-    const db = await dbInstance.get();
-    const hasAdmins = Array.isArray(db.admins) && db.admins.length > 0;
-    res.json({ needsSetup: !hasAdmins });
-  } catch (err) {
-    res.json({ needsSetup: false });
-  }
+  res.json({ needsSetup: false });
 });
 
 router.post('/setup/admin', async (req, res) => {
